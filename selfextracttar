@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 if [[ $1 = -h || $1 = --help || -z $1 ]]; then
   echo "usage: $0 files..."
   exit
 fi
 
 script='
-dd < "$BASH_SOURCE" skip=1024 iflag=skip_bytes status=none | tar x
+dd < "${BASH_SOURCE-$0}" skip=3 bs=512 2>/dev/null | tar x
 exit
 '
 
@@ -13,7 +13,7 @@ exit
 # https://en.wikipedia.org/wiki/Tar_(computing)
 {
                                   #Field Offset  Field Size  Field
-  printf %-100s $'#!/bin/bash\n#' #           0         100  File name
+  printf %-100s $'#!/bin/sh\n#'   #           0         100  File name
   printf %-8s   0                 #         100           8  File mode
   printf %-8s   0                 #         108           8  Owner's numeric user ID
   printf %-8s   0                 #         116           8  Group's numeric user ID
@@ -25,11 +25,11 @@ exit
   printf %-100s                   #         157         100  Name of linked file
   printf %-255s
 
-} > archive.bash
+} > archive.sh
 
 # checksum == sum (as unsigned ints) of all the bytes in the header
 checksum=$(
-  od -An -tu1 -v archive.bash |
+  od -An -tu1 -v archive.sh |
   tr -s ' \n' + |
   sed 's/^+//;s/+$/\n/' |
   bc
@@ -37,14 +37,14 @@ checksum=$(
 
 # overwrite the bytes in the right position
 printf '%-8o' "$checksum" |
-dd seek=148 bs=1 count=8 conv=notrunc of=archive.bash status=none
+dd seek=148 bs=1 count=8 conv=notrunc of=archive.sh 2>/dev/null
 
 
 
 
 
-printf %-512s "$script" >>archive.bash
-chmod +x archive.bash
+printf %-512s "$script" >>archive.sh
+chmod +x archive.sh
 
 
 
@@ -73,8 +73,8 @@ printf %-8o   "$checksum"
 printf %-1s   V
 printf %-100s
 printf %-255s
-} >>archive.bash
+} >>archive.sh
 
 
 # now we can append our files normally
-tar rf archive.bash "$@"
+tar rf archive.sh "$@"
